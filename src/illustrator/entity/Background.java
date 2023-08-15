@@ -5,8 +5,8 @@ import arc.graphics.g2d.*;
 import static arc.Core.*;
 
 public class Background extends Entity {
-    public Background(float start, float end) {
-        super(start, end);
+    public Background(float start) {
+        super(start);
     }
 
     @Override

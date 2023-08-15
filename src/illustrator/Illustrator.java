@@ -24,7 +24,6 @@ public class Illustrator implements ApplicationListener {
     private FrameBuffer buffer, upscale;
     private Shader screenspace;
     private float lastTime = -1f;
-    private int frameIndex = 0;
 
     private final Queue<byte[]> frames = new Queue<>();
     private boolean done = false;
@@ -32,10 +31,22 @@ public class Illustrator implements ApplicationListener {
     private Condition doneCond;
     private Thread frameWorker;
 
+    private static boolean preview;
+
     public static void main(String[] args) {
+        if(args.length >= 1 && args[0].equals("--preview")) {
+            preview = true;
+        }
+
         new SdlApplication(new Illustrator(new ECS()), new SdlConfig() {{
-            width = 0;
-            height = 0;
+            if(preview) {
+                width = videoWidth;
+                height = videoHeight;
+            } else {
+                width = 0;
+                height = 0;
+            }
+
             resizable = false;
             decorated = false;
             disableAudio = true;
@@ -53,7 +64,7 @@ public class Illustrator implements ApplicationListener {
 
     @Override
     public void init() {
-        Lines.setCirclePrecision(3f);
+        Lines.setCirclePrecision(5f);
 
         camera = new Camera();
         camera.resize(videoWidth, videoHeight);
@@ -85,13 +96,15 @@ public class Illustrator implements ApplicationListener {
             }
             """);
 
-        doneLock = new ReentrantLock();
-        doneCond = doneLock.newCondition();
+        if(!preview) {
+            doneLock = new ReentrantLock();
+            doneCond = doneLock.newCondition();
+        }
 
         var output = files.local("output.mp4");
         output.delete();
 
-        frameWorker = new Thread(() -> {
+        if(!preview) frameWorker = new Thread(() -> {
             try {
                 var process = new ProcessBuilder(
                     "ffmpeg", "-hide_banner", "-loglevel", "error",
@@ -101,7 +114,6 @@ public class Illustrator implements ApplicationListener {
                     "-pix_fmt", "rgba",
                     "-i", "-",
                     "-filter:v", "vflip",
-                    "-vcodec", "libx265", "-crf", "28",
                     output.absolutePath()
                 ).start();
 
@@ -153,23 +165,27 @@ public class Illustrator implements ApplicationListener {
                 throw new RuntimeException(e);
             }
         }, "Frame-Worker");
-        frameWorker.start();
+        if(!preview) frameWorker.start();
 
         Time.setDeltaProvider(() -> 1f);
         fonts.load();
 
         module.init(this);
-        buffer.begin();
-
-        Log.info("Recording...");
+        if(!preview) {
+            buffer.begin();
+            Log.info("Recording...");
+        }
     }
 
     @Override
     public void update() {
+        long started = Time.millis();
+
         Time.updateGlobal();
         Time.update();
         entities.update(lastTime);
 
+        graphics.clear(Color.clear);
         upscale.begin(Color.clear);
 
         camera.update();
@@ -184,42 +200,51 @@ public class Illustrator implements ApplicationListener {
         upscale.end();
         Draw.blit(upscale.getTexture(), screenspace);
 
-        synchronized(frames) {
-            frames.addLast(ScreenUtils.getFrameBufferPixels(0, 0, videoWidth, videoHeight, false));
+        if(!preview) {
+            synchronized(frames) {
+                frames.addLast(ScreenUtils.getFrameBufferPixels(0, 0, videoWidth, videoHeight, false));
+            }
+            doneLock.lock();
+            doneCond.signal();
+            doneLock.unlock();
         }
-        doneLock.lock();
-        doneCond.signal();
-        doneLock.unlock();
 
         lastTime = Time.time;
-        frameIndex++;
+        if(preview) {
+            long elapsed = Time.millis() - started;
+            long rate = (long)(1000d / 60d);
+            if(elapsed < rate) {
+                Threads.sleep(rate - elapsed);
+            }
+        }
     }
 
     @Override
     public void dispose() {
-        Log.info("Recorded @ frame(s).", frameIndex);
         upscale.dispose();
         screenspace.dispose();
 
-        buffer.end();
+        if(!preview) buffer.end();
         buffer.dispose();
 
         module.dispose();
         fonts.dispose();
 
-        doneLock.lock();
-        done = true;
-        doneCond.signalAll();
-        doneLock.unlock();
+        if(!preview) {
+            doneLock.lock();
+            done = true;
+            doneCond.signalAll();
+            doneLock.unlock();
 
-        Log.info("Waiting for FFmpeg to finish...");
-        try {
-            frameWorker.join();
-        } catch(InterruptedException e) {
-            throw new RuntimeException(e);
+            Log.info("Waiting for FFmpeg to finish...");
+            try {
+                frameWorker.join();
+            } catch(InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            Log.info("Finished.");
         }
-
-        Log.info("Finished.");
     }
 
     public interface IllustratorModule extends Disposable {

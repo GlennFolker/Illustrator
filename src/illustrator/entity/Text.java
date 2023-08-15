@@ -11,8 +11,8 @@ public class Text extends Entity {
     public float targetWidth = 0f;
     public boolean wrap = false;
 
-    public Text(float start, float end, Font font) {
-        super(start, end);
+    public Text(float start, Font font) {
+        super(start);
         this.font = font;
     }
 

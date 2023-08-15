@@ -1,7 +1,6 @@
 package illustrator.entity;
 
 import arc.graphics.*;
-import arc.math.*;
 import arc.struct.*;
 import arc.util.*;
 import illustrator.keyframe.*;
@@ -12,7 +11,7 @@ public abstract class Entity {
 
     public Color color = new Color();
     public float z;
-    public float start, end;
+    public float start;
 
     public Entity parent;
     public final Seq<Entity> children = new Seq<>();
@@ -20,15 +19,15 @@ public abstract class Entity {
     private final Seq<Keyframe> pendingFrames = new Seq<>(false);
     private final Seq<Keyframe> affectingFrames = new Seq<>(false);
 
-    public Entity(float start, float end) {
+    private boolean removed;
+
+    public Entity(float start) {
         this.start = start;
-        this.end = end;
     }
 
     public void child(Entity entity) {
         entity.parent = this;
         entity.start += start;
-        entity.end += start;
         children.add(entity);
     }
 
@@ -82,16 +81,20 @@ public abstract class Entity {
         }
     }
 
+    public boolean isDone() {
+        return pendingFrames.isEmpty() && affectingFrames.isEmpty();
+    }
+
     public abstract void draw(float lastTime);
 
     public void onEnter() {}
     public void onExit() {}
 
-    public float time() {
-        return time(Time.time);
+    public void remove() {
+        removed = true;
     }
 
-    public float time(float time) {
-        return (time - start) / end;
+    public boolean isRemoved() {
+        return removed;
     }
 }
