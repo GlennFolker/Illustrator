@@ -16,8 +16,8 @@ public abstract class Entity {
     public Entity parent;
     public final Seq<Entity> children = new Seq<>();
 
-    private final Seq<Keyframe> pendingFrames = new Seq<>(false);
-    private final Seq<Keyframe> affectingFrames = new Seq<>(false);
+    private final Seq<Keyframe> pendingFrames = new Seq<>(false), affectingFrames = new Seq<>(false);
+    private final Seq<Runnable> onEnter = new Seq<>(), onExit = new Seq<>();
 
     private boolean removed;
 
@@ -87,8 +87,21 @@ public abstract class Entity {
 
     public abstract void draw(float lastTime);
 
-    public void onEnter() {}
-    public void onExit() {}
+    public void entered() {
+        for(var run : onEnter) run.run();
+    }
+
+    public void exited() {
+        for(var run : onExit) run.run();
+    }
+    
+    public void onEnter(Runnable run) {
+        onEnter.add(run);
+    }
+
+    public void onExit(Runnable run) {
+        onExit.add(run);
+    }
 
     public void remove() {
         removed = true;

@@ -7,7 +7,7 @@ import arc.graphics.g2d.*;
 import arc.graphics.gl.*;
 import arc.struct.*;
 import arc.util.*;
-import illustrator.modules.*;
+import illustrator.modules.ecs.*;
 
 import java.io.*;
 import java.util.concurrent.locks.*;
@@ -64,7 +64,7 @@ public class Illustrator implements ApplicationListener {
 
     @Override
     public void init() {
-        Lines.setCirclePrecision(5f);
+        Lines.setCirclePrecision(8f);
 
         camera = new Camera();
         camera.resize(videoWidth, videoHeight);
@@ -113,21 +113,12 @@ public class Illustrator implements ApplicationListener {
                     "-f", "rawvideo",
                     "-pix_fmt", "rgba",
                     "-i", "-",
+                    "-pix_fmt", "yuv420p",
+                    "-profile:v", "baseline", "-level", "3.0",
+                    "-vcodec", "libx264", "-crf", "18",
                     "-filter:v", "vflip",
                     output.absolutePath()
                 ).start();
-
-                /*new Thread(() -> {
-                    var err = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                    String line;
-                    try {
-                        while((line = err.readLine()) != null) {
-                            System.out.println(line);
-                        }
-                    } catch(IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }).start();*/
 
                 var out = process.getOutputStream();
 
@@ -242,8 +233,6 @@ public class Illustrator implements ApplicationListener {
             } catch(InterruptedException e) {
                 throw new RuntimeException(e);
             }
-
-            Log.info("Finished.");
         }
     }
 

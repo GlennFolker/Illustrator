@@ -22,7 +22,7 @@ public class Entities {
         while(pendingIter.hasNext()) {
             var e = pendingIter.next();
             if(time > e.start) {
-                e.onEnter();
+                e.entered();
 
                 pendingIter.remove();
                 drawing.add(e);
@@ -34,7 +34,7 @@ public class Entities {
         while(drawingIter.hasNext()) {
             var e = drawingIter.next();
             if(e.isRemoved()) {
-                e.onExit();
+                e.exited();
                 drawingIter.remove();
                 dirty = true;
             }

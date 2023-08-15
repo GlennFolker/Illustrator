@@ -1,19 +1,32 @@
 package illustrator.entity;
 
 import arc.graphics.g2d.*;
-import arc.math.*;
 import arc.util.*;
+import illustrator.keyframe.*;
 
 public class Text extends Entity {
     public Font font;
     public String text = "";
-    public int align = Align.center;
+    public int halign = Align.center, valign = Align.center;
     public float targetWidth = 0f;
     public boolean wrap = false;
+
+    public float width, height;
 
     public Text(float start, Font font) {
         super(start);
         this.font = font;
+    }
+
+    @Override
+    public void update(float lastTime) {
+        super.update(lastTime);
+        var layout = GlyphLayout.obtain();
+        layout.setText(font, text, color, targetWidth, halign, wrap);
+
+        width = layout.width;
+        height = layout.height;
+        layout.free();
     }
 
     @Override
@@ -28,10 +41,35 @@ public class Text extends Entity {
         );
 
         var layout = GlyphLayout.obtain();
-        layout.setText(font, text, color, targetWidth, align, wrap);
-        font.draw(text, globalTrns.translation.x, globalTrns.translation.y + layout.height / 2f, targetWidth, align, wrap);
+        layout.setText(font, text, color, targetWidth, halign, wrap);
+        font.draw(text, globalTrns.translation.x, globalTrns.translation.y + (
+            (valign & Align.bottom) != 0 ? layout.height :
+            (valign & Align.center) != 0 ? layout.height / 2f :
+            0f
+        ), targetWidth, halign, wrap);
         layout.free();
 
         font.getData().setScale(1f);
+    }
+
+    public class TypingKeyframe extends Keyframe {
+        public String initial;
+        public final String text;
+
+        public TypingKeyframe(float start, float end, String initial, String text) {
+            super(start, end);
+            this.initial = initial;
+            this.text = text;
+        }
+
+        @Override
+        public void onEnter() {
+            if(initial == null) initial = Text.this.text;
+        }
+
+        @Override
+        public void update(float lastTime) {
+            Text.this.text = (initial + text).substring(initial.length(), initial.length() + (int)(time() * text.length()));
+        }
     }
 }
