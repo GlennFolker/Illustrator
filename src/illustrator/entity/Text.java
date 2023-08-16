@@ -2,7 +2,7 @@ package illustrator.entity;
 
 import arc.graphics.g2d.*;
 import arc.util.*;
-import illustrator.keyframe.*;
+import illustrator.*;
 
 public class Text extends Entity {
     public Font font;
@@ -13,14 +13,13 @@ public class Text extends Entity {
 
     public float width, height;
 
-    public Text(float start, Font font) {
+    public Text(Start start, Font font) {
         super(start);
         this.font = font;
     }
 
     @Override
-    public void update(float lastTime) {
-        super.update(lastTime);
+    public void updateSelf(float lastTime) {
         var layout = GlyphLayout.obtain();
         layout.setText(font, text, color, targetWidth, halign, wrap);
 
@@ -30,7 +29,7 @@ public class Text extends Entity {
     }
 
     @Override
-    public void draw(float lastTime) {
+    public void drawSelf(float lastTime) {
         font.setColor(color);
         font.setUseIntegerPositions(false);
 
@@ -56,8 +55,8 @@ public class Text extends Entity {
         public String initial;
         public final String text;
 
-        public TypingKeyframe(float start, float end, String initial, String text) {
-            super(start, end);
+        public TypingKeyframe(Start start, float duration, String initial, String text) {
+            super(start, duration);
             this.initial = initial;
             this.text = text;
         }

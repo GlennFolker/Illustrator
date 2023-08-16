@@ -2,6 +2,7 @@ package illustrator.keyframe;
 
 import arc.graphics.*;
 import arc.math.*;
+import illustrator.*;
 
 public class ColorKeyframe extends Keyframe {
     public final Color color;
@@ -9,16 +10,16 @@ public class ColorKeyframe extends Keyframe {
 
     protected Color from;
 
-    public ColorKeyframe(float start, float end) {
-        this(start, end, Color.white);
+    public ColorKeyframe(Start start, float duration) {
+        this(start, duration, Color.white);
     }
 
-    public ColorKeyframe(float start, float end, Color color) {
-        this(start, end, color, Interp.linear);
+    public ColorKeyframe(Start start, float duration, Color color) {
+        this(start, duration, color, Interp.linear);
     }
 
-    public ColorKeyframe(float start, float end, Color color, Interp interpolation) {
-        super(start, end);
+    public ColorKeyframe(Start start, float duration, Color color, Interp interpolation) {
+        super(start, duration);
         this.color = color;
         this.interpolation = interpolation;
     }

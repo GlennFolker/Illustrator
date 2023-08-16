@@ -17,7 +17,7 @@ public class Transform {
     }
 
     public Transform mul(Transform other) {
-        translation.add(tmp.set(other.translation).rotate(rotation));
+        translation.add(tmp.set(other.translation).scl(scale).rotate(rotation));
         rotation += other.rotation;
         scale.scl(other.scale);
         return this;

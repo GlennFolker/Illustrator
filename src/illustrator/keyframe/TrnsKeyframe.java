@@ -3,6 +3,7 @@ package illustrator.keyframe;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.util.*;
+import illustrator.*;
 
 public class TrnsKeyframe extends Keyframe {
     public final Vec2 relTranslation;
@@ -10,8 +11,8 @@ public class TrnsKeyframe extends Keyframe {
     public final Vec2 relScale;
     public final Interp interpolation;
 
-    public TrnsKeyframe(float start, float end, Vec2 relTranslation, float relRotation, Vec2 relScale, Interp interpolation) {
-        super(start, end);
+    public TrnsKeyframe(Start start, float duration, Vec2 relTranslation, float relRotation, Vec2 relScale, Interp interpolation) {
+        super(start, duration);
         this.relTranslation = relTranslation;
         this.relRotation = relRotation;
         this.relScale = relScale;
@@ -23,12 +24,13 @@ public class TrnsKeyframe extends Keyframe {
         float time = Time.time;
         float now = interpolation.apply(time(time)), then = interpolation.apply(time(lastTime));
 
-        entity.localTrns.translation.add(Tmp.v1
+        var trns = entity.localTrns;
+        trns.translation.add(Tmp.v1
             .set(relTranslation).scl(now)
             .sub(Tmp.v2.set(relTranslation).scl(then))
         );
-        entity.localTrns.rotation += relRotation * now - relRotation * then;
-        entity.localTrns.scale.add(Tmp.v1
+        trns.rotation += relRotation * now - relRotation * then;
+        trns.scale.add(Tmp.v1
             .set(relScale).scl(now)
             .sub(Tmp.v2.set(relScale).scl(then))
         );

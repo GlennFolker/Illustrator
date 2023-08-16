@@ -7,6 +7,7 @@ import arc.graphics.g2d.*;
 import arc.graphics.gl.*;
 import arc.struct.*;
 import arc.util.*;
+import illustrator.Start.*;
 import illustrator.modules.ecs.*;
 
 import java.io.*;
@@ -16,10 +17,9 @@ import static arc.Core.*;
 
 public class Illustrator implements ApplicationListener {
     public static final int videoWidth = 1920, videoHeight = 1080, samples = 4;
-
     private final IllustratorModule module;
 
-    public Entities entities;
+    public Root root;
     public Fonts fonts;
     private FrameBuffer buffer, upscale;
     private Shader screenspace;
@@ -72,7 +72,7 @@ public class Illustrator implements ApplicationListener {
         batch = new SortedSpriteBatch();
         atlas = TextureAtlas.blankAtlas();
 
-        entities = new Entities();
+        root = new Root();
         fonts = new Fonts();
         buffer = new FrameBuffer(videoWidth, videoHeight);
         upscale = new FrameBuffer(videoWidth * samples, videoHeight * samples);
@@ -174,16 +174,15 @@ public class Illustrator implements ApplicationListener {
 
         Time.updateGlobal();
         Time.update();
-        entities.update(lastTime);
+        root.update(lastTime);
 
-        graphics.clear(Color.clear);
-        upscale.begin(Color.clear);
+        upscale.begin();
 
         camera.update();
         Draw.proj(camera.mat);
         Draw.sort(true);
 
-        if(entities.draw(lastTime)) app.exit();
+        root.draw(lastTime);
 
         Draw.sort(false);
         Draw.flush();
@@ -208,6 +207,8 @@ public class Illustrator implements ApplicationListener {
                 Threads.sleep(rate - elapsed);
             }
         }
+
+        if(root.isCompleted()) app.exit();
     }
 
     @Override
@@ -238,5 +239,16 @@ public class Illustrator implements ApplicationListener {
 
     public interface IllustratorModule extends Disposable {
         void init(Illustrator illustrator);
+    }
+
+    public static class Root extends Entity {
+        public Root() {
+            super(new Immediate());
+        }
+
+        @Override
+        public void drawSelf(float lastTime) {
+            graphics.clear(color);
+        }
     }
 }

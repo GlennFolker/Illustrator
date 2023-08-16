@@ -7,6 +7,7 @@ import arc.math.*;
 import arc.math.geom.*;
 import arc.util.*;
 import illustrator.*;
+import illustrator.Start.*;
 import illustrator.entity.*;
 import illustrator.keyframe.*;
 
@@ -20,80 +21,87 @@ public class ECS implements IllustratorModule {
         titleFont = illustrator.fonts.bold.generateFont(new FreeTypeFontParameter() {{ size = 192; }});
         subtitleFont = illustrator.fonts.semibold.generateFont(new FreeTypeFontParameter() {{ size = 96; }});
 
-        illustrator.entities
-            .add(new Background(0f) {{
-                color.set(Color.white);
-            }})
-            .add(new Text(0f, titleFont) {{
-                localTrns.translation.set(0f, 0f);
-                localTrns.scale.set(0f, 0f);
-                color.set(Palettes.green);
+        illustrator.root
+            .color(Color.white)
+            .child(new Text(new Immediate(), titleFont) {
+                Keyframe lineAppear, lineDisappear, circleDisappear;
 
-                text = "ECS";
+                {
+                    localTrns.translation.set(0f, 0f);
+                    localTrns.scale.set(0f, 0f);
+                    color.set(Palettes.green);
 
-                float radius = 240f;
-                // Pop out.
-                key(new TrnsKeyframe(0f, 8f, Vec2.ZERO, 0f, new Vec2(1.1f, 1.1f), Interp.pow3));
-                key(new TrnsKeyframe(8f, 16f, Vec2.ZERO, 0f, new Vec2(-0.1f, -0.1f), Interp.pow2));
+                    text = "ECS";
+                    float radius = 240f;
 
-                // Drag to top-left.
-                key(new TrnsKeyframe(100f, 130f, new Vec2(
-                    -videoWidth / 2f + radius + 48f,
-                    videoHeight / 2f - radius - 48f
-                ), 0f, Vec2.ZERO, Interp.smooth2));
+                    // Pop out.
+                    var initZoomIn = key(new TrnsKeyframe(new Immediate(), 8f, Vec2.ZERO, 0f, new Vec2(1.1f, 1.1f), Interp.pow3));
+                    key(new TrnsKeyframe(new After<>(initZoomIn), 8f, Vec2.ZERO, 0f, new Vec2(-0.1f, -0.1f), Interp.pow2));
 
-                child(new Entity(16f) {
-                    float circle;
-                    float line;
+                    child(new Entity(new After<>(initZoomIn)) {
+                        float circle;
+                        float line;
 
-                    @Override
-                    public void draw(float lastTime) {
-                        Lines.stroke(30f, color);
-                        Lines.arc(
-                            globalTrns.translation.x, globalTrns.translation.y,
-                            radius, circle * 350f / 360f, 10f + globalTrns.rotation,
-                            Lines.circleVertices(radius)
-                        );
+                        @Override
+                        public void draw(float lastTime) {
+                            Lines.stroke(30f, color);
+                            Lines.arc(
+                                globalTrns.translation.x, globalTrns.translation.y,
+                                radius, circle * 348f / 360f, 12f + globalTrns.rotation,
+                                Lines.circleVertices(radius)
+                            );
 
-                        Tmp.v1.trns(globalTrns.rotation, radius).add(globalTrns.translation);
-                        Lines.lineAngle(Tmp.v1.x, Tmp.v1.y, globalTrns.rotation, 120f * line);
-                    }
+                            Tmp.v1.trns(globalTrns.rotation, radius).add(globalTrns.translation);
+                            Lines.lineAngle(Tmp.v1.x, Tmp.v1.y, globalTrns.rotation, 120f * line);
+                        }
 
-                    {
-                        color.set(Palettes.green);
+                        {
+                            color.set(Palettes.green);
 
-                        // Rotate to appear.
-                        float cAppear = 45f, lAppear = 15f;
-                        key(new TrnsKeyframe(0f, cAppear + lAppear, Vec2.ZERO, 45f, Vec2.ZERO, Interp.pow3));
+                            // Rotate to appear.
+                            float cAppear = 45f, lAppear = 15f;
+                            key(new TrnsKeyframe(new Immediate(), cAppear + lAppear, Vec2.ZERO, 45f, Vec2.ZERO, Interp.pow3));
 
-                        // Appear.
-                        key(0f, cAppear, (entity, keyframe, lastTime) -> circle = Interp.pow2In.apply(keyframe.time()));
-                        key(cAppear, cAppear + lAppear, (entity, keyframe, lastTime) -> line = Interp.pow3Out.apply(keyframe.time()));
+                            // Appear.
+                            var cAppearKey = key(new Immediate(), cAppear, (keyframe, lastTime) -> circle = Interp.pow2In.apply(keyframe.time()));
+                            lineAppear = key(new After<>(cAppearKey), lAppear, (keyframe, lastTime) -> line = Interp.pow3Out.apply(keyframe.time()));
 
-                        // Rotate to disappear.
-                        key(new TrnsKeyframe(66f, 106f, Vec2.ZERO, -90f, Vec2.ZERO, Interp.smooth2));
-                        key(new TrnsKeyframe(80f + lAppear, 80f + lAppear + cAppear, Vec2.ZERO, 60f, Vec2.ZERO, Interp.smooth2));
+                            // Disappear.
+                            lineDisappear = key(new After<>(lineAppear, 20f), lAppear, (keyframe, lastTime) -> line = 1f - Interp.pow3In.apply(keyframe.time()));
+                            circleDisappear = key(new After<>(lineDisappear), cAppear, (keyframe, lastTime) -> circle = 1f - Interp.pow4.apply(keyframe.time()));
 
-                        // Disappear.
-                        key(80f, 80f + lAppear, (entity, keyframe, lastTime) -> line = 1f - Interp.pow3In.apply(keyframe.time()));
-                        key(80f + lAppear, 80f + cAppear + lAppear, (entity, keyframe, lastTime) -> circle = 1f - Interp.pow4.apply(keyframe.time()));
-                    }
-                });
+                            // Rotate to disappear.
+                            key(new TrnsKeyframe(new After<>(lineAppear, 6f), 40f, Vec2.ZERO, -90f, Vec2.ZERO, Interp.smooth2));
+                            key(new TrnsKeyframe(new After<>(lineDisappear), circleDisappear.duration, Vec2.ZERO, 60f, Vec2.ZERO, Interp.smooth2));
+                        }
+                    });
 
-                var title = this;
-                child(new Text(130f, subtitleFont) {{
-                    color.set(Palettes.darkGreen);
+                    // Drag to top-left based on radius.
+                    key(new TrnsKeyframe(new After<>(lineAppear, 20f), 30f, new Vec2(
+                        -videoWidth / 2f + radius + 48f,
+                        videoHeight / 2f - radius - 48f
+                    ), 0f, Vec2.ZERO, Interp.smooth2));
 
-                    halign = Align.left;
-                    valign = Align.top;
+                    // Drag to top-left based on layout size.
+                    key(new WrapKeyframe(new After<>(circleDisappear), 30f, (start, duration) -> new TrnsKeyframe(start, duration, new Vec2(
+                        0f,
+                        (-videoWidth / 2f - globalTrns.translation.x + width / 2f) + videoHeight / 2f - globalTrns.translation.y - height / 2f
+                    ), 0f, Vec2.ZERO, Interp.pow3)));
 
-                    onEnter(() -> localTrns.translation.set(-title.width / 2f, -title.height / 2f - 24f));
+                    var title = this;
+                    child(new Text(new After<>(lineDisappear, 25f), subtitleFont) {{
+                        color.set(Palettes.darkGreen);
 
-                    // Typing the subtitle out for 3/4 seconds.
-                    key(new TypingKeyframe(0f, 45f, "", "Entity Component System"));
-                    key(0f, 120f, (a, b, c) -> {});
-                }});
-            }});
+                        halign = Align.left;
+                        valign = Align.top;
+
+                        onEnter(() -> localTrns.translation.set(-title.width / 2f, -title.height / 2f - 24f));
+
+                        // Typing the subtitle out for 3/4 seconds.
+                        key(new TypingKeyframe(new Immediate(), 45f, "", "Entity Component System"));
+                    }});
+                }
+            });
     }
 
     @Override
