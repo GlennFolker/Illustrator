@@ -31,7 +31,7 @@ public class Text extends Entity {
     @Override
     public void drawSelf(float lastTime) {
         font.setColor(color);
-        font.setUseIntegerPositions(false);
+        font.setUseIntegerPositions(true);
 
         Draw.z(z);
         font.getData().setScale(

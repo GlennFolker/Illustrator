@@ -22,7 +22,10 @@ dependencies {
 def entry = 'illustrator.Illustrator'
 
 jar {
+    archiveFileName = 'Illustrator.jar'
     manifest.attributes('Main-Class': entry)
+
+    from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
 }
 
 tasks.register('run', JavaExec) {

@@ -21,7 +21,7 @@ public interface Start {
         }
     }
 
-    class After<T extends Completable> implements Start {
+    final class After<T extends Completable> implements Start {
         public final T ref;
         public final float offset;
 

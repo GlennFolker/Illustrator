@@ -32,11 +32,11 @@ public class Illustrator implements ApplicationListener {
     private Thread frameWorker;
 
     private static boolean preview;
+    private static boolean ffmpegOutput;
 
     public static void main(String[] args) {
-        if(args.length >= 1 && args[0].equals("--preview")) {
-            preview = true;
-        }
+        preview = Structs.contains(args, "--preview");
+        ffmpegOutput = Structs.contains(args, "--ffmpeg-output");
 
         new SdlApplication(new Illustrator(new ECS()), new SdlConfig() {{
             if(preview) {
@@ -94,69 +94,86 @@ public class Illustrator implements ApplicationListener {
             void main() {
                 gl_FragColor = texture2D(u_texture, v_texCoords);
             }
-            """);
+            """
+        );
 
         if(!preview) {
             doneLock = new ReentrantLock();
             doneCond = doneLock.newCondition();
-        }
+            frameWorker = new Thread(() -> {
+                var output = files.local("output.mp4");
+                output.delete();
 
-        var output = files.local("output.mp4");
-        output.delete();
+                try {
+                    var process = new ProcessBuilder(
+                        "ffmpeg", "-hide_banner", "-loglevel", "error",
+                        "-framerate", "60",
+                        "-s", videoWidth + "x" + videoHeight,
+                        "-f", "rawvideo",
+                        "-pix_fmt", "rgba",
+                        "-i", "-",
+                        "-codec:v", "libx264", "-preset", "veryslow", "-crf", "17", "-tune", "animation",
+                        "-profile:v", "baseline", "-pix_fmt", "yuv420p",
+                        "-filter:v", "vflip",
+                        output.absolutePath()
+                    ).start();
 
-        if(!preview) frameWorker = new Thread(() -> {
-            try {
-                var process = new ProcessBuilder(
-                    "ffmpeg", "-hide_banner", "-loglevel", "error",
-                    "-framerate", "60",
-                    "-s", videoWidth + "x" + videoHeight,
-                    "-f", "rawvideo",
-                    "-pix_fmt", "rgba",
-                    "-i", "-",
-                    "-pix_fmt", "yuv420p",
-                    "-profile:v", "baseline", "-level", "3.0",
-                    "-vcodec", "libx264", "-crf", "18",
-                    "-filter:v", "vflip",
-                    output.absolutePath()
-                ).start();
-
-                var out = process.getOutputStream();
-
-                boolean work = true;
-                while(work) {
-                    doneLock.lock();
-                    try {
-                        if(done) {
-                            work = false;
-                        } else {
-                            doneCond.await();
-                            if(done) work = false;
-                        }
-                    } catch(InterruptedException e) {
-                        throw new RuntimeException(e);
-                    } finally {
-                        doneLock.unlock();
+                    Thread errPrinter = null;
+                    if(ffmpegOutput) {
+                        errPrinter = new Thread(() -> {
+                            try {
+                                var err = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                                String line;
+                                while((line = err.readLine()) != null) {
+                                    System.out.println(line);
+                                }
+                            } catch(IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }, "FFmpeg-StdErr-Printer");
+                        errPrinter.start();
                     }
 
-                    while(true) {
-                        byte[] frame;
-                        synchronized(frames) {
-                            if(frames.isEmpty()) break;
-                            frame = frames.removeFirst();
+                    var out = process.getOutputStream();
+
+                    boolean work = true;
+                    while(work) {
+                        doneLock.lock();
+                        try {
+                            if(done) {
+                                work = false;
+                            } else {
+                                doneCond.await();
+                                if(done) work = false;
+                            }
+                        } catch(InterruptedException e) {
+                            throw new RuntimeException(e);
+                        } finally {
+                            doneLock.unlock();
                         }
 
-                        out.write(frame);
-                        out.flush();
+                        while(true) {
+                            byte[] frame;
+                            synchronized(frames) {
+                                if(frames.isEmpty()) break;
+                                frame = frames.removeFirst();
+                            }
+
+                            out.write(frame);
+                            out.flush();
+                        }
                     }
+
+                    out.close();
+                    process.waitFor();
+
+                    if(errPrinter != null) errPrinter.join();
+                } catch(IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
-
-                out.close();
-                process.waitFor();
-            } catch(IOException | InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }, "Frame-Worker");
-        if(!preview) frameWorker.start();
+            }, "Frame-Worker");
+            frameWorker.start();
+        }
 
         Time.setDeltaProvider(() -> 1f);
         fonts.load();
