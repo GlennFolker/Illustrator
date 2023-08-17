@@ -33,10 +33,18 @@ public class Illustrator implements ApplicationListener {
 
     private static boolean preview;
     private static boolean ffmpegOutput;
+    private static int skip;
 
     public static void main(String[] args) {
-        preview = Structs.contains(args, "--preview");
-        ffmpegOutput = Structs.contains(args, "--ffmpeg-output");
+        for(var arg : args) {
+            if(arg.equals("--preview")) {
+                preview = true;
+            } else if(arg.equals("--ffmpeg-output")) {
+                ffmpegOutput = true;
+            } else if(arg.startsWith("--skip=")) {
+                skip = Integer.parseInt(arg.substring("--skip=".length()));
+            }
+        }
 
         new SdlApplication(new Illustrator(new ECS()), new SdlConfig() {{
             if(preview) {
@@ -183,6 +191,14 @@ public class Illustrator implements ApplicationListener {
             buffer.begin();
             Log.info("Recording...");
         }
+
+        for(int i = 0; i < skip; i++) {
+            Time.updateGlobal();
+            Time.update();
+
+            root.update(lastTime);
+            lastTime = Time.time;
+        }
     }
 
     @Override
@@ -261,6 +277,7 @@ public class Illustrator implements ApplicationListener {
     public static class Root extends Entity {
         public Root() {
             super(new Immediate());
+            startTime = 0f;
         }
 
         @Override

@@ -2,11 +2,11 @@ package illustrator.keyframe;
 
 import illustrator.*;
 
-public class WrapKeyframe extends Keyframe {
+public class Wrap extends Keyframe {
     public final KeyframeProvider provider;
     protected Keyframe inner;
 
-    public WrapKeyframe(Start start, float duration, KeyframeProvider provider) {
+    public Wrap(Start start, float duration, KeyframeProvider provider) {
         super(start, duration);
         this.provider = provider;
     }

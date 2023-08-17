@@ -3,7 +3,7 @@ package illustrator;
 import arc.util.*;
 import illustrator.Start.*;
 
-public abstract class Keyframe implements Completable {
+public abstract class Keyframe implements Span {
     public final Start start;
     public final float duration;
 
@@ -21,8 +21,13 @@ public abstract class Keyframe implements Completable {
     public void onExit() {}
 
     @Override
+    public boolean isStarted() {
+        return startTime != -1f;
+    }
+
+    @Override
     public boolean isCompleted() {
-        return startTime != -1f && Time.time - startTime >= duration;
+        return isStarted() && Time.time - startTime >= duration;
     }
 
     public float time() {

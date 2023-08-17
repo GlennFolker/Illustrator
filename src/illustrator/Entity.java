@@ -7,7 +7,7 @@ import illustrator.Start.*;
 import illustrator.entity.*;
 
 @SuppressWarnings("unchecked")
-public class Entity implements Completable {
+public class Entity implements Span {
     public final Start start;
     public Transform globalTrns = new Transform(), localTrns = new Transform();
     public float z;
@@ -19,7 +19,7 @@ public class Entity implements Completable {
     private final Seq<Runnable> enterListeners = new Seq<>(), exitListeners = new Seq<>();
 
     private boolean removed;
-    float startTime;
+    protected float startTime = -1f;
 
     public Entity(Start start) {
         this.start = start;
@@ -144,8 +144,14 @@ public class Entity implements Completable {
     }
 
     @Override
+    public boolean isStarted() {
+        return startTime != -1f;
+    }
+
+    @Override
     public boolean isCompleted() {
         return
+            isStarted() &&
             pendingKeyframes.isEmpty() && startedKeyframes.isEmpty() &&
             pendingChildren.isEmpty() && !startedChildren.contains(e -> !e.isCompleted());
     }
