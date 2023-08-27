@@ -1,5 +1,6 @@
 package illustrator;
 
+import arc.struct.*;
 import arc.util.*;
 import illustrator.Start.*;
 
@@ -10,6 +11,8 @@ public abstract class Keyframe implements Span {
     public float startTime = -1f;
     public Entity entity;
 
+    private final Seq<Runnable> enterListeners = new Seq<>(), exitListeners = new Seq<>();
+
     public Keyframe(Start start, float duration) {
         this.start = start;
         this.duration = duration;
@@ -17,8 +20,21 @@ public abstract class Keyframe implements Span {
 
     public abstract void update(float lastTime);
 
-    public void onEnter() {}
-    public void onExit() {}
+    public void onEnter() {
+        enterListeners.each(Runnable::run);
+    }
+
+    public void onExit() {
+        exitListeners.each(Runnable::run);
+    }
+
+    public void onEnter(Runnable run) {
+        enterListeners.add(run);
+    }
+
+    public void onExit(Runnable run) {
+        exitListeners.add(run);
+    }
 
     @Override
     public boolean isStarted() {

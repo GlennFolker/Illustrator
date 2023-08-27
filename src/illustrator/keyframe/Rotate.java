@@ -1,7 +1,6 @@
 package illustrator.keyframe;
 
 import arc.math.*;
-import arc.util.*;
 import illustrator.*;
 
 public class Rotate extends Keyframe {

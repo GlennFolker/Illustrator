@@ -1,6 +1,7 @@
 package illustrator.entity;
 
 import arc.graphics.g2d.*;
+import arc.math.*;
 import arc.util.*;
 import illustrator.*;
 
@@ -20,6 +21,10 @@ public class Text extends Entity {
 
     @Override
     public void updateSelf(float lastTime) {
+        updateLayout();
+    }
+
+    public void updateLayout() {
         var layout = GlyphLayout.obtain();
         layout.setText(font, text, color, targetWidth, halign, wrap);
 
@@ -51,14 +56,28 @@ public class Text extends Entity {
         font.getData().setScale(1f);
     }
 
-    public class TypingKeyframe extends Keyframe {
+    public class Typing extends Keyframe {
         public String initial;
         public final String text;
+        public final Interp interpolation;
 
-        public TypingKeyframe(Start start, float duration, String initial, String text) {
+        public Typing(Start start, float duration, String text) {
+            this(start, duration, null, text);
+        }
+
+        public Typing(Start start, float duration, String text, Interp interpolation) {
+            this(start, duration, null, text, interpolation);
+        }
+
+        public Typing(Start start, float duration, String initial, String text) {
+            this(start, duration, initial, text, Interp.linear);
+        }
+
+        public Typing(Start start, float duration, String initial, String text, Interp interpolation) {
             super(start, duration);
             this.initial = initial;
             this.text = text;
+            this.interpolation = interpolation;
         }
 
         @Override
@@ -68,7 +87,7 @@ public class Text extends Entity {
 
         @Override
         public void update(float lastTime) {
-            Text.this.text = (initial + text).substring(initial.length(), initial.length() + (int)(time() * text.length()));
+            Text.this.text = (initial + text).substring(initial.length(), initial.length() + (int)(interpolation.apply(time()) * text.length()));
         }
     }
 }

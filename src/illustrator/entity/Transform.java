@@ -1,10 +1,9 @@
 package illustrator.entity;
 
 import arc.math.geom.*;
+import arc.util.*;
 
 public class Transform {
-    private static final Vec2 tmp = new Vec2();
-
     public Vec2 translation = new Vec2();
     public float rotation;
     public Vec2 scale = new Vec2(1f, 1f);
@@ -17,7 +16,7 @@ public class Transform {
     }
 
     public Transform mul(Transform other) {
-        translation.add(tmp.set(other.translation).scl(scale).rotate(rotation));
+        translation.add(Tmp.v1.set(other.translation).scl(scale).rotate(rotation));
         rotation += other.rotation;
         scale.scl(other.scale);
         return this;

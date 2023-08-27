@@ -1,6 +1,7 @@
 package illustrator;
 
 import arc.freetype.*;
+import arc.graphics.*;
 import arc.util.*;
 
 import static arc.Core.*;
@@ -13,6 +14,9 @@ public class Fonts implements Disposable {
         light, lightItalic;
 
     public void load() {
+        // Necessary for large fonts.
+        FreeTypeFontGenerator.setMaxTextureSize(Gl.getInt(Gl.maxTextureSize));
+
         bold = new FreeTypeFontGenerator(files.internal("fonts/bold.ttf"));
         boldItalic = new FreeTypeFontGenerator(files.internal("fonts/bold-italic.ttf"));
         semibold = new FreeTypeFontGenerator(files.internal("fonts/semibold.ttf"));

@@ -5,17 +5,21 @@ import arc.backend.sdl.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.graphics.gl.*;
-import arc.struct.*;
+import arc.input.*;
+import arc.struct.Queue;
 import arc.util.*;
 import illustrator.Start.*;
-import illustrator.modules.ecs.*;
 
 import java.io.*;
+import java.util.*;
 import java.util.concurrent.locks.*;
 
 import static arc.Core.*;
 
-public class Illustrator implements ApplicationListener {
+@SuppressWarnings("unchecked")
+public class Illustrator implements ApplicationListener, InputProcessor {
+    public static Illustrator inst;
+
     public static final int videoWidth = 1920, videoHeight = 1080, samples = 4;
     private final IllustratorModule module;
 
@@ -24,6 +28,8 @@ public class Illustrator implements ApplicationListener {
     private FrameBuffer buffer, upscale;
     private Shader screenspace;
     private float lastTime = -1f;
+
+    private final Queue<Click> clickListeners = new Queue<>();
 
     private final Queue<byte[]> frames = new Queue<>();
     private boolean done = false;
@@ -34,8 +40,10 @@ public class Illustrator implements ApplicationListener {
     private static boolean preview;
     private static boolean ffmpegOutput;
     private static int skip;
+    private static int fps = 60;
 
     public static void main(String[] args) {
+        String module = null;
         for(var arg : args) {
             if(arg.equals("--preview")) {
                 preview = true;
@@ -43,10 +51,27 @@ public class Illustrator implements ApplicationListener {
                 ffmpegOutput = true;
             } else if(arg.startsWith("--skip=")) {
                 skip = Integer.parseInt(arg.substring("--skip=".length()));
+            } else if(arg.startsWith("--fps=")) {
+                fps = Integer.parseInt(arg.substring("--fps=".length()));
+            } else {
+                module = arg;
             }
         }
 
-        new SdlApplication(new Illustrator(new ECS()), new SdlConfig() {{
+        Objects.requireNonNull(module, "relative illustrator module class path is required");
+        IllustratorModule instantiated;
+        try {
+            Class<? extends IllustratorModule> type = (Class<? extends IllustratorModule>)Class.forName("illustrator.modules." + module);
+            instantiated = type.getConstructor().newInstance();
+        } catch(ClassNotFoundException e) {
+            throw new RuntimeException("path '" + module + "' not found");
+        } catch(NoSuchMethodException e) {
+            throw new RuntimeException("illustrator module '" + module + "' must have a default constructor");
+        } catch(Throwable e) {
+            throw new RuntimeException(e);
+        }
+
+        new SdlApplication(inst = new Illustrator(instantiated), new SdlConfig() {{
             if(preview) {
                 width = videoWidth;
                 height = videoHeight;
@@ -72,13 +97,15 @@ public class Illustrator implements ApplicationListener {
 
     @Override
     public void init() {
-        Lines.setCirclePrecision(8f);
+        Lines.setCirclePrecision(4f);
 
         camera = new Camera();
         camera.resize(videoWidth, videoHeight);
 
         batch = new SortedSpriteBatch();
         atlas = TextureAtlas.blankAtlas();
+
+        input.addProcessor(this);
 
         root = new Root();
         fonts = new Fonts();
@@ -186,7 +213,7 @@ public class Illustrator implements ApplicationListener {
         Time.setDeltaProvider(() -> 1f);
         fonts.load();
 
-        module.init(this);
+        module.init();
         if(!preview) {
             buffer.begin();
             Log.info("Recording...");
@@ -202,6 +229,18 @@ public class Illustrator implements ApplicationListener {
     }
 
     @Override
+    public boolean keyDown(KeyCode keycode) {
+        if(keycode == KeyCode.right && !clickListeners.isEmpty()) {
+            clickListeners.removeFirst().click();
+        }
+        return false;
+    }
+
+    public void addClickListener(Click click) {
+        clickListeners.addLast(click);
+    }
+
+    @Override
     public void update() {
         long started = Time.millis();
 
@@ -209,6 +248,7 @@ public class Illustrator implements ApplicationListener {
         Time.update();
         root.update(lastTime);
 
+        graphics.clear(Color.clear);
         upscale.begin();
 
         camera.update();
@@ -235,7 +275,7 @@ public class Illustrator implements ApplicationListener {
         lastTime = Time.time;
         if(preview) {
             long elapsed = Time.millis() - started;
-            long rate = (long)(1000d / 60d);
+            long rate = (long)(1000d / fps);
             if(elapsed < rate) {
                 Threads.sleep(rate - elapsed);
             }
@@ -267,11 +307,13 @@ public class Illustrator implements ApplicationListener {
             } catch(InterruptedException e) {
                 throw new RuntimeException(e);
             }
+
+            Log.info("Finished.");
         }
     }
 
     public interface IllustratorModule extends Disposable {
-        void init(Illustrator illustrator);
+        void init();
     }
 
     public static class Root extends Entity {

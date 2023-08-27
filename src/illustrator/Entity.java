@@ -1,5 +1,6 @@
 package illustrator;
 
+import arc.func.*;
 import arc.graphics.*;
 import arc.struct.*;
 import arc.util.*;
@@ -135,12 +136,14 @@ public class Entity implements Span {
         exitListeners.each(Runnable::run);
     }
 
-    protected void onEnter(Runnable run) {
+    public void onEnter(Runnable run) {
         enterListeners.add(run);
     }
 
-    protected void onExit(Runnable run) {
+    public void onExit(Runnable run) {
         exitListeners.add(run);
+        startedChildren.each(Entity::onExit);
+        startedKeyframes.each(Keyframe::onExit);
     }
 
     @Override
@@ -150,10 +153,11 @@ public class Entity implements Span {
 
     @Override
     public boolean isCompleted() {
-        return
+        return removed || (
             isStarted() &&
             pendingKeyframes.isEmpty() && startedKeyframes.isEmpty() &&
-            pendingChildren.isEmpty() && !startedChildren.contains(e -> !e.isCompleted());
+            pendingChildren.isEmpty() && !startedChildren.contains(e -> !e.isCompleted())
+        );
     }
 
     public float startTime() {
@@ -164,12 +168,13 @@ public class Entity implements Span {
         return (T)parent;
     }
 
+    public <T extends Entity> void eachChildren(Cons<T> cons) {
+        startedChildren.forEach(e -> cons.get((T)e));
+    }
+
     public void remove() {
         removed = true;
-        for(var child : startedChildren) {
-            child.onExit();
-            child.remove();
-        }
+        startedChildren.each(Entity::remove);
 
         pendingChildren.clear();
         pendingKeyframes.clear();
